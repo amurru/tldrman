@@ -1,6 +1,7 @@
 # tldrman (local-only Vivaldi Side Panel)
 
-Vanilla MV3 extension, no build step. Summarizes the active tab via OpenRouter free LLM,
+Vanilla MV3 extension, no build step. Summarizes the active tab via any
+OpenAI-compatible LLM (OpenRouter free models are the default fallback),
 with knowledge-shard export for Obsidian and a creator pack for social/reel output.
 
 ## Load in Vivaldi
@@ -50,8 +51,8 @@ Output is rendered as markdown.
 
 - `manifest.json` - MV3, static `side_panel.default_path` (avoids Vivaldi dynamic setOptions bug)
 - `background.js` - opens panel on action click
-- `sidepanel.*` - panel UI + read-only extractor + OpenRouter streaming
-- `options.*` - local-only key/model storage (`chrome.storage.local`)
+- `sidepanel.*` - panel UI + read-only extractor + multi-provider streaming
+- `options.*` - local-only provider/key/model storage (`chrome.storage.local`)
 
 ## Notes
 
@@ -60,4 +61,5 @@ Output is rendered as markdown.
   boilerplate only on a detached clone.
 - Cannot read `chrome://`, `vivaldi://`, Web Store, PDFs.
 - Page text truncated to ~12000 chars before sending.
-- Free models are rate-limited; `402` means quota exhausted, `429` means slow down.
+- Remote free models are rate-limited; `402` means quota exhausted, `429` means slow down.
+  Local providers (Ollama, LM Studio) have no quotas or keys.
