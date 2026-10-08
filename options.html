@@ -32,8 +32,12 @@ button { margin-top: 12px; padding: 8px 12px; }
 <label for="model">Model</label>
 <input id="model" type="text" placeholder="openrouter/free" />
 <div class="hint">OpenRouter: <code>openrouter/free</code> or e.g. <code>google/gemini-flash-1.5:free</code>. Ollama: e.g. <code>llama3.1</code>. OpenAI: e.g. <code>gpt-4o-mini</code>.</div>
+<label for="language">Preferred output language</label>
+<select id="language"></select>
+<div class="hint">All generated content (summaries, shards, posts, answers) is written in this language.</div>
 <button id="save">Save</button>
 <div id="status"></div>
+<script src="languages.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

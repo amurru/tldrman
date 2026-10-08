@@ -54,7 +54,8 @@ Output is rendered as markdown.
 - `manifest.json` - MV3, static `side_panel.default_path` (avoids Vivaldi dynamic setOptions bug)
 - `background.js` - opens panel on action click
 - `sidepanel.*` - panel UI + read-only extractor + multi-provider streaming
-- `options.*` - local-only provider/key/model storage (`chrome.storage.local`)
+- `languages.js` - shared preferred-output-language list (incl. es-419/es-ES, pt-BR/pt-PT, zh-CN/zh-TW, Cantonese)
+- `options.*` - local-only provider/key/model/language storage (`chrome.storage.local`)
 
 ## Notes
 

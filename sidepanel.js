@@ -2,6 +2,7 @@
 
 const DEFAULT_MODEL = "openrouter/free";
 const DEFAULT_BASE = "https://openrouter.ai/api/v1";
+const DEFAULT_LANGUAGE = (typeof TLDRMAN_DEFAULT_LANGUAGE !== "undefined") ? TLDRMAN_DEFAULT_LANGUAGE : "en";
 const MAX_CHARS = 12000;
 
 // Any OpenAI-compatible provider works: base URL + /chat/completions.
@@ -75,23 +76,34 @@ function markActiveMode(mode) {
 }
 
 async function getConfig() {
-  const d = await chrome.storage.local.get(["apiKey", "model", "baseUrl", "autoRun", "history"]);
+  const d = await chrome.storage.local.get(["apiKey", "model", "baseUrl", "autoRun", "history", "language"]);
   const baseUrl = normalizeBase(d.baseUrl || DEFAULT_BASE);
   return {
     apiKey: d.apiKey || "",
     model: d.model || DEFAULT_MODEL,
     baseUrl,
+    language: d.language || DEFAULT_LANGUAGE,
     needsKey: !isLocalProvider(baseUrl) && !(d.apiKey || ""),
     autoRun: Boolean(d.autoRun),
     history: Array.isArray(d.history) ? d.history : [],
   };
 }
 
+function languageLabel(code) {
+  if (typeof tldrmanLanguageLabel === "function") return tldrmanLanguageLabel(code);
+  return code || DEFAULT_LANGUAGE;
+}
+
+function languageInstruction(code) {
+  if (typeof tldrmanLanguageInstruction === "function") return tldrmanLanguageInstruction(code);
+  return "Respond entirely in English.";
+}
+
 async function refreshConfigUI() {
-  const { apiKey, model, baseUrl, autoRun } = await getConfig();
+  const { apiKey, model, baseUrl, autoRun, language } = await getConfig();
   keyWarningEl.hidden = Boolean(apiKey) || isLocalProvider(baseUrl);
-  modelLabelEl.textContent = shortHost(baseUrl) + " / " + model;
-  modelLabelEl.title = baseUrl + "  model=" + model;
+  modelLabelEl.textContent = shortHost(baseUrl) + " / " + model + " · " + languageLabel(language);
+  modelLabelEl.title = baseUrl + "  model=" + model + "  language=" + (language || DEFAULT_LANGUAGE);
   autoRunEl.checked = autoRun;
 }
 
@@ -213,17 +225,19 @@ function truncate(text) {
   return text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) + "\n...[truncated]" : text;
 }
 
-function buildMessages(mode, page) {
+function buildMessages(mode, page, language) {
   const header = "Title: " + page.title + "\nURL: " + page.url + (page.desc ? "\nDescription: " + page.desc : "");
+  const system = (PROMPTS[mode] || PROMPTS.summary) + "\n\n" + languageInstruction(language || DEFAULT_LANGUAGE);
   return [
-    { role: "system", content: PROMPTS[mode] || PROMPTS.summary },
+    { role: "system", content: system },
     { role: "user", content: header + "\n\nPage content:\n" + truncate(page.text) },
   ];
 }
 
-function buildChatMessages(question, page) {
+function buildChatMessages(question, page, language) {
+  const system = "Answer using ONLY the page content below. If missing, say so briefly. Under 120 words. " + languageInstruction(language || DEFAULT_LANGUAGE);
   return [
-    { role: "system", content: "Answer using ONLY the page content below. If missing, say so briefly. Under 120 words." },
+    { role: "system", content: system },
     { role: "user", content: "Title: " + page.title + "\nURL: " + page.url + "\n\nPage content:\n" + truncate(page.text) + "\n\nQuestion: " + question },
   ];
 }
@@ -305,7 +319,7 @@ function paintHistory(history) {
     title.textContent = (h.mode || "?") + ": " + (h.title || h.url || "page");
     const meta = document.createElement("div");
     meta.className = "h-meta";
-    meta.textContent = new Date(h.ts).toLocaleString() + "  ·  " + (h.model || "");
+    meta.textContent = new Date(h.ts).toLocaleString() + "  ·  " + (h.model || "") + (h.language ? "  ·  " + languageLabel(h.language) : "");
     div.append(title, meta);
     div.addEventListener("click", () => {
       markActiveMode(h.mode || "summary");
@@ -326,13 +340,13 @@ async function run(mode) {
   showRaw("");
   usageEl.textContent = "";
   try {
-    const { apiKey, model, baseUrl, needsKey } = await getConfig();
+    const { apiKey, model, baseUrl, needsKey, language } = await getConfig();
     if (needsKey) { await refreshConfigUI(); throw new Error("Set your API key in Settings first."); }
     const page = await readActiveTab();
     setStatus("Streaming from " + model + "...", true);
-    const full = await streamChat(baseUrl, apiKey, model, buildMessages(mode, page), aborter.signal);
+    const full = await streamChat(baseUrl, apiKey, model, buildMessages(mode, page, language), aborter.signal);
     setStatus("Done. " + page.text.length + " chars read.");
-    await saveHistory({ ts: Date.now(), mode, title: page.title, url: page.url, model, text: full });
+    await saveHistory({ ts: Date.now(), mode, title: page.title, url: page.url, model, language, text: full });
   } catch (e) {
     setStatus(e.name === "AbortError" ? "Stopped." : "Error: " + (e.message || e));
   } finally {
@@ -348,11 +362,11 @@ async function ask(question) {
   markActiveMode("ask");
   showRaw("");
   try {
-    const { apiKey, model, baseUrl, needsKey } = await getConfig();
+    const { apiKey, model, baseUrl, needsKey, language } = await getConfig();
     if (needsKey) throw new Error("Set your API key in Settings first.");
     const page = lastPage || await readActiveTab();
     setStatus("Asking about this page...", true);
-    await streamChat(baseUrl, apiKey, model, buildChatMessages(question, page), aborter.signal);
+    await streamChat(baseUrl, apiKey, model, buildChatMessages(question, page, language), aborter.signal);
     setStatus("Done.");
   } catch (e) {
     setStatus(e.name === "AbortError" ? "Stopped." : "Error: " + (e.message || e));

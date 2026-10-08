@@ -9,7 +9,28 @@ const presetEl = document.getElementById("preset");
 const baseUrlEl = document.getElementById("baseUrl");
 const apiKeyEl = document.getElementById("apiKey");
 const modelEl = document.getElementById("model");
+const languageEl = document.getElementById("language");
 const statusEl = document.getElementById("status");
+
+const DEFAULT_LANGUAGE = (typeof TLDRMAN_DEFAULT_LANGUAGE !== "undefined") ? TLDRMAN_DEFAULT_LANGUAGE : "en";
+const LANGUAGES = (typeof TLDRMAN_LANGUAGES !== "undefined") ? TLDRMAN_LANGUAGES : [{ code: "en", label: "English", group: "General" }];
+
+function buildLanguageOptions() {
+  languageEl.innerHTML = "";
+  const groups = {};
+  for (const lang of LANGUAGES) {
+    const g = lang.group || "Other";
+    if (!groups[g]) {
+      groups[g] = document.createElement("optgroup");
+      groups[g].label = g;
+      languageEl.append(groups[g]);
+    }
+    const opt = document.createElement("option");
+    opt.value = lang.code;
+    opt.textContent = lang.label;
+    groups[g].append(opt);
+  }
+}
 
 function guessPreset(baseUrl) {
   for (const [name, p] of Object.entries(PRESETS)) {
@@ -19,11 +40,16 @@ function guessPreset(baseUrl) {
 }
 
 async function load() {
-  const d = await chrome.storage.local.get(["apiKey", "model", "baseUrl"]);
+  const d = await chrome.storage.local.get(["apiKey", "model", "baseUrl", "language"]);
   baseUrlEl.value = d.baseUrl || PRESETS.openrouter.baseUrl;
   apiKeyEl.value = d.apiKey || "";
   modelEl.value = d.model || PRESETS.openrouter.model;
   presetEl.value = guessPreset(baseUrlEl.value);
+  buildLanguageOptions();
+  languageEl.value = d.language || DEFAULT_LANGUAGE;
+  if (![...languageEl.options].some((o) => o.value === languageEl.value)) {
+    languageEl.value = DEFAULT_LANGUAGE;
+  }
 }
 
 presetEl.addEventListener("change", () => {
@@ -40,6 +66,7 @@ document.getElementById("save").addEventListener("click", async () => {
     baseUrl: baseUrlEl.value.trim().replace(/\/+$/, "") || PRESETS.openrouter.baseUrl,
     apiKey: apiKeyEl.value.trim(),
     model: modelEl.value.trim() || PRESETS.openrouter.model,
+    language: languageEl.value || DEFAULT_LANGUAGE,
   });
   statusEl.textContent = "Saved locally.";
   setTimeout(() => { statusEl.textContent = ""; }, 1500);
