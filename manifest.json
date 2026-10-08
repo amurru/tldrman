@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "tldrman",
+  "version": "1.0.0",
+  "description": "Local-only Vivaldi Side Panel: summarize the active tab via OpenRouter free LLM.",
+  "permissions": ["sidePanel", "scripting", "storage", "tabs", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open tldrman"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  }
+}

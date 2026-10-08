@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>tldrman</title>
+<link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+<header class="topbar">
+<div class="brand">
+<span class="logo" aria-hidden="true">TL</span>
+<div>
+<h1>tldrman</h1>
+<div id="modelLabel" class="model">Model: ...</div>
+</div>
+</div>
+<a href="options.html" target="_blank" class="icon-btn" title="Settings">⚙</a>
+</header>
+
+<div id="keyWarning" class="warning" hidden>
+No OpenRouter API key set. <a href="options.html" target="_blank">Set it here</a> (openrouter.ai/keys).
+</div>
+
+<section class="card page-card">
+<div class="page-row">
+<div class="page-text">
+<div id="pageTitle" class="page-title">No page loaded</div>
+<div id="pageInfo" class="page-url">Open a normal http(s) page.</div>
+</div>
+<button id="refreshBtn" class="icon-btn" title="Re-read active tab">↻</button>
+</div>
+<div class="page-meta">
+<span id="charCount" class="pill">0 chars</span>
+<span id="readState" class="pill ghost">not read</span>
+<label class="auto"><input type="checkbox" id="autoRun" /> auto</label>
+</div>
+</section>
+
+<section class="card">
+<div class="card-title">Summarize</div>
+<div class="grid">
+<button data-mode="tldr" title="Alt+1: 1-2 sentence summary"><b>TLDR</b><small>Alt+1</small></button>
+<button data-mode="summary" title="Alt+2: short paragraph"><b>Summary</b><small>Alt+2</small></button>
+<button data-mode="bullets" title="Alt+3: key points"><b>Bullets</b><small>Alt+3</small></button>
+<button data-mode="eli5" title="Alt+4: simple explainer"><b>ELI5</b><small>Alt+4</small></button>
+<button data-mode="takeaways" title="Alt+5: takeaways + next steps"><b>Takeaways</b><small>Alt+5</small></button>
+<button id="stopBtn" class="danger" disabled title="Esc: stop streaming">Stop</button>
+</div>
+</section>
+
+<section class="card output-card">
+<div class="output-toolbar">
+<span id="modeLabel" class="pill">idle</span>
+<span id="usage" class="usage"></span>
+<span class="spacer"></span>
+<button id="copyBtn" class="mini" title="Copy result">Copy</button>
+<button id="clearBtn" class="mini" title="Clear output">Clear</button>
+</div>
+<div id="status" class="status">Click a button to summarize the active tab.</div>
+<div id="output" class="output"><p class="placeholder">Results appear here, rendered as markdown.</p></div>
+</section>
+
+<section class="card">
+<div class="card-title">Ask about this page</div>
+<form id="chatForm" class="chat">
+<input id="chatInput" type="text" placeholder="Ask...  ( / focuses here )" autocomplete="off" />
+<button type="submit">Ask</button>
+</form>
+</section>
+
+<details class="card history">
+<summary>History <span id="historyCount" class="pill">0</span></summary>
+<div id="historyList" class="history-list"><p class="placeholder">No summaries yet.</p></div>
+</details>
+
+<script src="sidepanel.js"></script>
+</body>
+</html>
