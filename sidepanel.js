@@ -1,8 +1,22 @@
 // tldrman side panel: streaming SSE, markdown render, history, auto-run, shortcuts.
 
 const DEFAULT_MODEL = "openrouter/free";
+const DEFAULT_BASE = "https://openrouter.ai/api/v1";
 const MAX_CHARS = 12000;
-const API_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+// Any OpenAI-compatible provider works: base URL + /chat/completions.
+// OpenRouter stays the default fallback.
+function normalizeBase(u) {
+  return (u || DEFAULT_BASE).trim().replace(/\/+$/, "");
+}
+
+function isLocalProvider(base) {
+  return /^(https?:\/\/)?(localhost|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])|[a-z0-9-]+\.local)/i.test(base);
+}
+
+function shortHost(base) {
+  try { return new URL(base).hostname; } catch (e) { return base; }
+}
 const HISTORY_LIMIT = 20;
 
 const PROMPTS = {
@@ -61,19 +75,23 @@ function markActiveMode(mode) {
 }
 
 async function getConfig() {
-  const d = await chrome.storage.local.get(["apiKey", "model", "autoRun", "history"]);
+  const d = await chrome.storage.local.get(["apiKey", "model", "baseUrl", "autoRun", "history"]);
+  const baseUrl = normalizeBase(d.baseUrl || DEFAULT_BASE);
   return {
     apiKey: d.apiKey || "",
     model: d.model || DEFAULT_MODEL,
+    baseUrl,
+    needsKey: !isLocalProvider(baseUrl) && !(d.apiKey || ""),
     autoRun: Boolean(d.autoRun),
     history: Array.isArray(d.history) ? d.history : [],
   };
 }
 
 async function refreshConfigUI() {
-  const { apiKey, model, autoRun } = await getConfig();
-  keyWarningEl.hidden = Boolean(apiKey);
-  modelLabelEl.textContent = "Model: " + model;
+  const { apiKey, model, baseUrl, autoRun } = await getConfig();
+  keyWarningEl.hidden = Boolean(apiKey) || isLocalProvider(baseUrl);
+  modelLabelEl.textContent = shortHost(baseUrl) + " / " + model;
+  modelLabelEl.title = baseUrl + "  model=" + model;
   autoRunEl.checked = autoRun;
 }
 
@@ -226,19 +244,24 @@ function parseSSE(chunk) {
   return out;
 }
 
-async function streamOpenRouter(apiKey, model, messages, signal) {
-  const resp = await fetch(API_URL, {
-    method: "POST", signal,
-    headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json", "X-Title": "tldrman (local)" },
+async function streamChat(baseUrl, apiKey, model, messages, signal) {
+  const isOpenRouter = baseUrl.includes("openrouter.ai");
+  const headers = { "Content-Type": "application/json" };
+  if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
+  if (isOpenRouter) headers["X-Title"] = "tldrman (local)";
+  const resp = await fetch(baseUrl + "/chat/completions", {
+    method: "POST", signal, headers,
     body: JSON.stringify({ model, messages, stream: true, max_tokens: 1000 }),
   });
   if (!resp.ok) {
     let detail = "";
     try { detail = JSON.stringify(await resp.json()).slice(0, 300); } catch (e) { /* ignore */ }
     if (resp.status === 401) throw new Error("Invalid API key (401). Check Settings.");
-    if (resp.status === 402) throw new Error("No free-model quota left (402). Retry later or pin another :free model.");
+    if (resp.status === 402 && isOpenRouter) throw new Error("No free-model quota left (402). Retry later or pin another :free model.");
+    if (resp.status === 402) throw new Error("Payment required (402). " + detail);
     if (resp.status === 429) throw new Error("Rate limited (429). Wait and retry.");
-    throw new Error("OpenRouter error " + resp.status + ". " + detail);
+    if (resp.status === 404) throw new Error("Endpoint not found (404). Check base URL and model name. " + detail);
+    throw new Error("Provider error " + resp.status + " (" + shortHost(baseUrl) + "). " + detail);
   }
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -303,11 +326,11 @@ async function run(mode) {
   showRaw("");
   usageEl.textContent = "";
   try {
-    const { apiKey, model } = await getConfig();
-    if (!apiKey) { await refreshConfigUI(); throw new Error("Set your OpenRouter API key in Settings first."); }
+    const { apiKey, model, baseUrl, needsKey } = await getConfig();
+    if (needsKey) { await refreshConfigUI(); throw new Error("Set your API key in Settings first."); }
     const page = await readActiveTab();
     setStatus("Streaming from " + model + "...", true);
-    const full = await streamOpenRouter(apiKey, model, buildMessages(mode, page), aborter.signal);
+    const full = await streamChat(baseUrl, apiKey, model, buildMessages(mode, page), aborter.signal);
     setStatus("Done. " + page.text.length + " chars read.");
     await saveHistory({ ts: Date.now(), mode, title: page.title, url: page.url, model, text: full });
   } catch (e) {
@@ -325,11 +348,11 @@ async function ask(question) {
   markActiveMode("ask");
   showRaw("");
   try {
-    const { apiKey, model } = await getConfig();
-    if (!apiKey) throw new Error("Set your OpenRouter API key in Settings first.");
+    const { apiKey, model, baseUrl, needsKey } = await getConfig();
+    if (needsKey) throw new Error("Set your API key in Settings first.");
     const page = lastPage || await readActiveTab();
     setStatus("Asking about this page...", true);
-    await streamOpenRouter(apiKey, model, buildChatMessages(question, page), aborter.signal);
+    await streamChat(baseUrl, apiKey, model, buildChatMessages(question, page), aborter.signal);
     setStatus("Done.");
   } catch (e) {
     setStatus(e.name === "AbortError" ? "Stopped." : "Error: " + (e.message || e));
@@ -421,8 +444,8 @@ async function onTabChange(auto = false) {
       pageInfoEl.textContent = tab.url.slice(0, 140);
       charCountEl.textContent = "— chars";
       if (auto) {
-        const { autoRun, apiKey } = await getConfig();
-        if (autoRun && apiKey) { reading = false; run(lastMode); return; }
+        const { autoRun, needsKey } = await getConfig();
+        if (autoRun && !needsKey) { reading = false; run(lastMode); return; }
       }
     }
   } catch (e) { /* ignore */ }
