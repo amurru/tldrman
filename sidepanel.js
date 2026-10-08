@@ -117,32 +117,41 @@ function showRaw(raw) {
   outputEl.scrollTop = outputEl.scrollHeight;
 }
 
-// Serialized into the page: must stay self-contained, no closures.
+// Serialized into the page: must stay self-contained (no closures).
+// READ-ONLY on the live DOM: it works on a detached clone, so the page
+// is never mutated (an earlier version called el.remove() on live nodes,
+// which visibly broke pages: missing header/nav/footer and dead scripts).
 function extractPageContent() {
   const title = document.title || "";
   const descMeta = document.querySelector('meta[name="description"]');
   const desc = (descMeta && descMeta.content) || "";
   const kill = "script,style,noscript,header,footer,nav,aside,.cookie,.cookies,.consent,.gdpr,.advert,.ads,.sidebar,.popup,.modal,.paywall";
-  document.querySelectorAll(kill).forEach((el) => el.remove());
   const candidates = ["article", "main", '[role="main"]', ".post-content", ".post", ".content", "#content"];
   let best = null;
   let bestLen = 0;
+  // Read-only probing: innerText does not mutate the DOM.
   for (const sel of candidates) {
     const el = document.querySelector(sel);
     const len = el && el.innerText ? el.innerText.trim().length : 0;
     if (len > bestLen && len > 500) { best = el; bestLen = len; }
   }
-  if (!best) {
-    document.querySelectorAll("div,section").forEach((el) => {
-      const ps = el.querySelectorAll("p");
-      if (ps.length < 3) return;
-      let len = 0;
-      ps.forEach((p) => { len += (p.innerText || "").length; });
-      if (len > bestLen && len < 100000) { best = el; bestLen = len; }
-    });
+  let text = "";
+  if (best) {
+    // Narrow root (article/main) rarely contains boilerplate: read live text as-is.
+    text = (best.innerText || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  } else {
+    // Body fallback: strip boilerplate on a DETACHED clone only.
+    const clone = document.body.cloneNode(true);
+    clone.querySelectorAll(kill).forEach((el) => el.remove());
+    const parts = [];
+    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const t = (node.nodeValue || "").replace(/\s+/g, " ").trim();
+      if (t && parts[parts.length - 1] !== t) parts.push(t);
+    }
+    text = parts.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   }
-  const raw = ((best || document.body).innerText || "");
-  const text = raw.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   return { title, desc, text, url: location.href };
 }
 
