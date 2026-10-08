@@ -11,8 +11,9 @@ const PROMPTS = {
   bullets: "List the 5-8 key points from the page below as bullet lines starting with '- '. Be concise.",
   eli5: "Explain the page below like I'm 5 years old. Simple words, short sentences, one small paragraph plus one analogy.",
   takeaways: "From the page below, output two sections: 'Takeaways:' (3-5 bullets) then 'Next steps:' (1-3 short action items, or 'None' if not applicable).",
+  shards: "You are building a technical knowledge shard for Obsidian from the page below. Output clean Markdown only, no preamble. Use exactly these sections:\n\n## Overview\n2-3 sentences: what this is and when to use it.\n\n## Key concepts\nBullet list of terms in bold with one-line definitions: - **Term** - definition.\n\n## How it works\nNumbered steps or short paragraphs explaining the mechanism.\n\n## Code / commands\nFenced code blocks with language tags where applicable. Skip if none.\n\n## Gotchas\nBullets: pitfalls, edge cases, version caveats.\n\n## References\nBullets with page links or named sources mentioned. Keep answers dense and technical.",
 };
-const MODE_SHORTCUTS = { tldr: "Alt+1", summary: "Alt+2", bullets: "Alt+3", eli5: "Alt+4", takeaways: "Alt+5" };
+const MODE_SHORTCUTS = { tldr: "Alt+1", summary: "Alt+2", bullets: "Alt+3", eli5: "Alt+4", takeaways: "Alt+5", shards: "Alt+6" };
 
 const statusEl = document.getElementById("status");
 const outputEl = document.getElementById("output");
@@ -344,6 +345,32 @@ document.getElementById("copyBtn").addEventListener("click", async () => {
     setStatus("Copy failed: " + (e.message || e));
   }
 });
+function slugify(s) {
+  return (s || "shard").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "shard";
+}
+
+function buildObsidianMarkdown() {
+  const page = lastPage || {};
+  const title = (page.title || "Untitled").replace(/"/g, "'");
+  const date = new Date().toISOString().slice(0, 10);
+  const front = "---\ntitle: \"" + title + "\"\nsource: " + (page.url || "") + "\ncreated: " + date + "\nmodel: " + modeLabelEl.textContent + "\ntags: [tldrman, knowledge-shard]\n---\n\n";
+  return front + "# " + title + "\n\n" + lastRaw.trim() + "\n\n---\nSource: " + (page.url || "") + "\n";
+}
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  if (!lastRaw.trim()) { setStatus("Nothing to export yet."); return; }
+  const page = lastPage || {};
+  const name = new Date().toISOString().slice(0, 10) + "-" + slugify(page.title) + ".md";
+  const blob = new Blob([buildObsidianMarkdown()], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  setStatus("Exported " + name + " - move it into your Obsidian vault.");
+});
 document.getElementById("clearBtn").addEventListener("click", () => {
   showRaw("");
   setStatus("Cleared.");
@@ -363,8 +390,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && aborter) { aborter.abort(); return; }
   if (e.key === "/" && document.activeElement !== chatInput) { e.preventDefault(); chatInput.focus(); return; }
   if (!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey) return;
-  const modes = ["tldr", "summary", "bullets", "eli5", "takeaways"];
-  const idx = ["1", "2", "3", "4", "5"].indexOf(e.key);
+  const modes = ["tldr", "summary", "bullets", "eli5", "takeaways", "shards"];
+  const idx = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
   if (idx !== -1) { e.preventDefault(); run(modes[idx]); }
 });
 
