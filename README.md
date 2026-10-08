@@ -1,3 +1,5 @@
+<p align="center"><img src="icons/icon-128.png" width="128" height="128" alt="tldrman logo"></p>
+
 # tldrman (local-only Vivaldi Side Panel)
 
 Vanilla MV3 extension, no build step. Summarizes the active tab via any
