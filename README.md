@@ -63,3 +63,40 @@ Output is rendered as markdown.
 - Page text truncated to ~12000 chars before sending.
 - Remote free models are rate-limited; `402` means quota exhausted, `429` means slow down.
   Local providers (Ollama, LM Studio) have no quotas or keys.
+
+## Compatibility
+
+Blocking API is `chrome.sidePanel` (`manifest.json` `side_panel.default_path`
++ `sidePanel` permission + `background.js` `setPanelBehavior` / `open`).
+The rest (`scripting.executeScript`, `storage.local`, `tabs`, `action`,
+`options_ui`, service worker, `fetch` SSE streaming) is portable MV3.
+
+| Browser | Engine | Side surface | Status | Notes |
+|---|---|---|---|---|
+| Vivaldi | Chromium | `chrome.sidePanel` | Verified | Primary target. Uses static `default_path`; avoids dynamic `setOptions` bug. |
+| Chrome 114+ | Chromium | `chrome.sidePanel` | Expected, not yet tested | Reference implementation. `open()` needs a user gesture since 116; `action.onClicked` satisfies this. |
+| Edge 114+ | Chromium | `chrome.sidePanel` | Expected, not yet tested | Same API as Chrome, surfaced as sidebar. |
+| Brave | Chromium | `chrome.sidePanel` | Expected, not yet tested | Supports nearly all Chrome Web Store MV3 extensions; confirm sidebar renders panel. |
+| Opera / Opera GX | Chromium | `chrome.sidePanel` MV3, legacy `sidebar_action` | Expected, not yet tested | Use MV3 path. Legacy `opr.sidebarAction` is a separate incompatible API. |
+| Arc | Chromium | `chrome.sidePanel` | Expected, not yet tested | Same as Chrome, needs load-unpacked check. |
+| Firefox Desktop / Zen | Gecko | `sidebarAction` (incompatible) | Requires port, not yet tested | No `sidePanel` support. Needs `sidebar_action: {default_panel}` manifest key + `sidebarAction.open()` rewrite. Panel HTML/JS is reusable with `browser.*` namespace or polyfill. Per-window, not per-tab. |
+| Safari macOS / iOS | WebKit | None | Not supported | No docked panel. Closest fallback is `windows.create({type: "popup"})` with same document, plus `safari-web-extension-converter` packaging and Store distribution. |
+| Mobile Chrome / Edge / Firefox Android / Safari iOS | Various | None | Not supported | No side panel surface; scripting and sideloading are restricted. |
+
+Firefox/Safari notes:
+
+- Firefox: `manifest.json` `side_panel` key and `sidePanel` permission are ignored. `background.js` panel-open logic must branch to `sidebarAction`. `tabs`, `scripting`, `storage` port with minor namespace changes.
+- Safari: full rework, not just a manifest patch. Per-site permission model is stricter; audit `scripting` / `tabs` / `storage` behavior per version.
+- `<all_urls>` + `scripting` works on Firefox desktop but changes install prompts and addons.mozilla.org review scrutiny.
+
+## Verification status
+
+- [x] Vivaldi: load unpacked, toolbar click opens panel, summarize active `http(s)` tab.
+- [ ] Chrome 114+: load unpacked, toolbar click opens panel, summarize + streaming.
+- [ ] Edge: same as Chrome.
+- [ ] Brave: same as Chrome, confirm sidebar UI.
+- [ ] Opera: same as Chrome via MV3 path.
+- [ ] Firefox: only after `sidebar_action` port (separate manifest/background).
+- [ ] Safari: only after popup-window fallback (no docked test possible).
+
+To verify a Chromium browser: load unpacked, click toolbar icon, check panel opens, run TLDR on a normal `http(s)` page, confirm streaming output, history save, and options persist.
