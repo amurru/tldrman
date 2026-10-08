@@ -14,8 +14,8 @@ button { margin-top: 12px; padding: 8px 12px; }
 </style>
 </head>
 <body>
-<h2>tldrman settings (local only)</h2>
-<label for="preset">Provider preset</label>
+<h2 data-i18n="opt.heading">tldrman settings (local only)</h2>
+<label for="preset" data-i18n="opt.preset">Provider preset</label>
 <select id="preset">
 <option value="openrouter">OpenRouter (default fallback)</option>
 <option value="openai">OpenAI</option>
@@ -23,21 +23,25 @@ button { margin-top: 12px; padding: 8px 12px; }
 <option value="lmstudio">LM Studio (local, no key)</option>
 <option value="custom">Custom OpenAI-compatible...</option>
 </select>
-<label for="baseUrl">Base URL (OpenAI-compatible)</label>
+<label for="baseUrl" data-i18n="opt.baseUrl">Base URL (OpenAI-compatible)</label>
 <input id="baseUrl" type="text" placeholder="https://openrouter.ai/api/v1" autocomplete="off" />
-<div class="hint">Any <code>/chat/completions</code> endpoint. Key is omitted for local servers.</div>
-<label for="apiKey">API key</label>
+<div class="hint" data-i18n-html="opt.baseUrlHint">Any <code>/chat/completions</code> endpoint. Key is omitted for local servers.</div>
+<label for="apiKey" data-i18n="opt.apiKey">API key</label>
 <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
-<div class="hint">OpenRouter key: https://openrouter.ai/keys (free models still need one). Stored only in chrome.storage.local.</div>
-<label for="model">Model</label>
+<div class="hint" data-i18n="opt.apiKeyHint">OpenRouter key: https://openrouter.ai/keys (free models still need one). Stored only in chrome.storage.local.</div>
+<label for="model" data-i18n="opt.model">Model</label>
 <input id="model" type="text" placeholder="openrouter/free" />
-<div class="hint">OpenRouter: <code>openrouter/free</code> or e.g. <code>google/gemini-flash-1.5:free</code>. Ollama: e.g. <code>llama3.1</code>. OpenAI: e.g. <code>gpt-4o-mini</code>.</div>
-<label for="language">Preferred output language</label>
+<div class="hint" data-i18n-html="opt.modelHint">OpenRouter: <code>openrouter/free</code> or e.g. <code>google/gemini-flash-1.5:free</code>. Ollama: e.g. <code>llama3.1</code>. OpenAI: e.g. <code>gpt-4o-mini</code>.</div>
+<label for="language" data-i18n="opt.outputLang">Preferred output language</label>
 <select id="language"></select>
-<div class="hint">All generated content (summaries, shards, posts, answers) is written in this language.</div>
-<button id="save">Save</button>
+<div class="hint" data-i18n="opt.outputLangHint">All generated content (summaries, shards, posts, answers) is written in this language.</div>
+<label for="uiLanguage" data-i18n="opt.uiLang">Interface language</label>
+<select id="uiLanguage"></select>
+<div class="hint" data-i18n="opt.uiLangHint">Language of the extension's buttons and messages. Browser default follows your browser language.</div>
+<button id="save" data-i18n="opt.save">Save</button>
 <div id="status"></div>
 <script src="languages.js"></script>
+<script src="i18n.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

@@ -16,11 +16,11 @@
 <div id="modelLabel" class="model">Model: ...</div>
 </div>
 </div>
-<a href="options.html" target="_blank" class="icon-btn" title="Settings">⚙</a>
+<a href="options.html" target="_blank" class="icon-btn" data-i18n-title="sp.settings" title="Settings">⚙</a>
 </header>
 
 <div id="keyWarning" class="warning" hidden>
-No API key set for this provider. <a href="options.html" target="_blank">Set it here</a> (local servers like Ollama need none).
+<span data-i18n="sp.noKeyPrefix">No API key set for this provider.</span> <a href="options.html" target="_blank" data-i18n="sp.noKeyLink">Set it here</a> <span data-i18n="sp.noKeySuffix">(local servers like Ollama need none).</span>
 </div>
 
 <section class="card page-card">
@@ -29,28 +29,28 @@ No API key set for this provider. <a href="options.html" target="_blank">Set it 
 <div id="pageTitle" class="page-title">No page loaded</div>
 <div id="pageInfo" class="page-url">Open a normal http(s) page.</div>
 </div>
-<button id="refreshBtn" class="icon-btn" title="Re-read active tab">↻</button>
+<button id="refreshBtn" class="icon-btn" data-i18n-title="sp.refresh" title="Re-read active tab">↻</button>
 </div>
 <div class="page-meta">
 <span id="charCount" class="pill">0 chars</span>
 <span id="readState" class="pill ghost">not read</span>
-<label class="auto"><input type="checkbox" id="autoRun" /> auto</label>
+<label class="auto"><input type="checkbox" id="autoRun" /> <span data-i18n="sp.auto">auto</span></label>
 </div>
 </section>
 
 <section class="card">
-<div class="card-title">Summarize</div>
+<div class="card-title" data-i18n="sp.summarize">Summarize</div>
 <div class="grid">
-<button data-mode="tldr" title="Alt+1: 1-2 sentence summary"><b>TLDR</b><small>Alt+1</small></button>
-<button data-mode="summary" title="Alt+2: short paragraph"><b>Summary</b><small>Alt+2</small></button>
-<button data-mode="bullets" title="Alt+3: key points"><b>Bullets</b><small>Alt+3</small></button>
-<button data-mode="eli5" title="Alt+4: simple explainer"><b>ELI5</b><small>Alt+4</small></button>
-<button data-mode="takeaways" title="Alt+5: takeaways + next steps"><b>Takeaways</b><small>Alt+5</small></button>
-<button data-mode="shards" title="Alt+6: technical knowledge shards for Obsidian"><b>Shards</b><small>Alt+6</small></button>
-<button data-mode="post" title="Alt+7: shareable social post"><b>Post</b><small>Alt+7</small></button>
-<button data-mode="thread" title="Alt+8: X thread"><b>Thread</b><small>Alt+8</small></button>
-<button data-mode="reel" title="Alt+9: Instagram reel script"><b>Reel</b><small>Alt+9</small></button>
-<button id="stopBtn" class="danger" disabled title="Esc: stop streaming">Stop</button>
+<button data-mode="tldr" data-i18n-title="sp.modeTip.tldr" title="Alt+1: 1-2 sentence summary"><b>TLDR</b><small>Alt+1</small></button>
+<button data-mode="summary" data-i18n-title="sp.modeTip.summary" title="Alt+2: short paragraph"><b>Summary</b><small>Alt+2</small></button>
+<button data-mode="bullets" data-i18n-title="sp.modeTip.bullets" title="Alt+3: key points"><b>Bullets</b><small>Alt+3</small></button>
+<button data-mode="eli5" data-i18n-title="sp.modeTip.eli5" title="Alt+4: simple explainer"><b>ELI5</b><small>Alt+4</small></button>
+<button data-mode="takeaways" data-i18n-title="sp.modeTip.takeaways" title="Alt+5: takeaways + next steps"><b>Takeaways</b><small>Alt+5</small></button>
+<button data-mode="shards" data-i18n-title="sp.modeTip.shards" title="Alt+6: technical knowledge shards for Obsidian"><b>Shards</b><small>Alt+6</small></button>
+<button data-mode="post" data-i18n-title="sp.modeTip.post" title="Alt+7: shareable social post"><b>Post</b><small>Alt+7</small></button>
+<button data-mode="thread" data-i18n-title="sp.modeTip.thread" title="Alt+8: X thread"><b>Thread</b><small>Alt+8</small></button>
+<button data-mode="reel" data-i18n-title="sp.modeTip.reel" title="Alt+9: Instagram reel script"><b>Reel</b><small>Alt+9</small></button>
+<button id="stopBtn" class="danger" disabled data-i18n-title="sp.stopTip" title="Esc: stop streaming"><span data-i18n="sp.stop">Stop</span></button>
 </div>
 </section>
 
@@ -59,28 +59,29 @@ No API key set for this provider. <a href="options.html" target="_blank">Set it 
 <span id="modeLabel" class="pill">idle</span>
 <span id="usage" class="usage"></span>
 <span class="spacer"></span>
-<button id="copyBtn" class="mini" title="Copy result">Copy</button>
-<button id="exportBtn" class="mini" title="Download as Obsidian-ready markdown">Export .md</button>
-<button id="clearBtn" class="mini" title="Clear output">Clear</button>
+<button id="copyBtn" class="mini" data-i18n-title="sp.copyTip" title="Copy result"><span data-i18n="sp.copy">Copy</span></button>
+<button id="exportBtn" class="mini" data-i18n-title="sp.exportTip" title="Download as Obsidian-ready markdown"><span data-i18n="sp.export">Export .md</span></button>
+<button id="clearBtn" class="mini" data-i18n-title="sp.clearTip" title="Clear output"><span data-i18n="sp.clear">Clear</span></button>
 </div>
 <div id="status" class="status">Click a button to summarize the active tab.</div>
 <div id="output" class="output"><p class="placeholder">Results appear here, rendered as markdown.</p></div>
 </section>
 
 <section class="card">
-<div class="card-title">Ask about this page</div>
+<div class="card-title" data-i18n="sp.askTitle">Ask about this page</div>
 <form id="chatForm" class="chat">
-<input id="chatInput" type="text" placeholder="Ask...  ( / focuses here )" autocomplete="off" />
-<button type="submit">Ask</button>
+<input id="chatInput" type="text" data-i18n-placeholder="sp.askPlaceholder" placeholder="Ask...  ( / focuses here )" autocomplete="off" />
+<button type="submit" data-i18n="sp.askButton">Ask</button>
 </form>
 </section>
 
 <details class="card history">
-<summary>History <span id="historyCount" class="pill">0</span></summary>
+<summary><span data-i18n="sp.history">History</span> <span id="historyCount" class="pill">0</span></summary>
 <div id="historyList" class="history-list"><p class="placeholder">No summaries yet.</p></div>
 </details>
 
 <script src="languages.js"></script>
+<script src="i18n.js"></script>
 <script src="sidepanel.js"></script>
 </body>
 </html>

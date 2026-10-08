@@ -56,10 +56,41 @@ let lastPage = null;
 let lastMode = "summary";
 let lastRaw = "";
 let reading = false;
+let uiLang = "en";
+let uiLangStored = "browser";
+
+function t(key, params) {
+  if (typeof tldrmanT === "function") return tldrmanT(uiLang, key, params);
+  return key;
+}
+
+function applyUiLanguage(stored) {
+  uiLangStored = stored || "browser";
+  uiLang = (typeof tldrmanResolveUiLanguage === "function") ? tldrmanResolveUiLanguage(uiLangStored) : "en";
+  if (typeof tldrmanApplyStatic === "function") tldrmanApplyStatic(document, uiLang);
+  paintStaticDynamic();
+}
+
+function paintStaticDynamic() {
+  if (!lastRaw && outputEl) {
+    outputEl.innerHTML = '<p class="placeholder">' + escapeHtml(t("sp.resultsPlaceholder")) + "</p>";
+  }
+  if (statusEl && !statusEl.dataset.touched && !statusEl.classList.contains("busy")) {
+    statusEl.textContent = t("sp.clickSummarize");
+  }
+  if (readStateEl && !lastPage) {
+    readStateEl.textContent = t("sp.notRead");
+  }
+  if (!lastPage) {
+    if (pageTitleEl && !pageTitleEl.dataset.touched) pageTitleEl.textContent = t("sp.noPage");
+    if (pageInfoEl && !pageInfoEl.dataset.touched) pageInfoEl.textContent = t("sp.openPage");
+  }
+}
 
 function setStatus(msg, busy = false) {
   statusEl.textContent = msg;
   statusEl.classList.toggle("busy", busy);
+  statusEl.dataset.touched = "1";
 }
 
 function setBusy(busy) {
@@ -76,13 +107,14 @@ function markActiveMode(mode) {
 }
 
 async function getConfig() {
-  const d = await chrome.storage.local.get(["apiKey", "model", "baseUrl", "autoRun", "history", "language"]);
+  const d = await chrome.storage.local.get(["apiKey", "model", "baseUrl", "autoRun", "history", "language", "uiLanguage"]);
   const baseUrl = normalizeBase(d.baseUrl || DEFAULT_BASE);
   return {
     apiKey: d.apiKey || "",
     model: d.model || DEFAULT_MODEL,
     baseUrl,
     language: d.language || DEFAULT_LANGUAGE,
+    uiLanguage: d.uiLanguage || "browser",
     needsKey: !isLocalProvider(baseUrl) && !(d.apiKey || ""),
     autoRun: Boolean(d.autoRun),
     history: Array.isArray(d.history) ? d.history : [],
@@ -100,7 +132,9 @@ function languageInstruction(code) {
 }
 
 async function refreshConfigUI() {
-  const { apiKey, model, baseUrl, autoRun, language } = await getConfig();
+  const { apiKey, model, baseUrl, autoRun, language, uiLanguage } = await getConfig();
+  const resolved = (typeof tldrmanResolveUiLanguage === "function") ? tldrmanResolveUiLanguage(uiLanguage) : "en";
+  if (uiLanguage !== uiLangStored || resolved !== uiLang) applyUiLanguage(uiLanguage);
   keyWarningEl.hidden = Boolean(apiKey) || isLocalProvider(baseUrl);
   modelLabelEl.textContent = shortHost(baseUrl) + " / " + model + " · " + languageLabel(language);
   modelLabelEl.title = baseUrl + "  model=" + model + "  language=" + (language || DEFAULT_LANGUAGE);
@@ -141,7 +175,7 @@ function renderMarkdown(raw) {
     }
   }
   if (inList) html += "</ul>";
-  return html || '<p class="placeholder">Empty.</p>';
+  return html || '<p class="placeholder">' + escapeHtml(t("sp.empty")) + "</p>";
 }
 
 function showRaw(raw) {
@@ -194,28 +228,31 @@ async function getActiveTab() {
 }
 
 function paintPage(page) {
-  pageTitleEl.textContent = page.title || "Untitled page";
+  pageTitleEl.textContent = page.title || t("sp.untitled");
+  pageTitleEl.dataset.touched = "1";
   pageInfoEl.textContent = page.url || "";
   pageInfoEl.title = page.url || "";
-  charCountEl.textContent = page.text.length + " chars";
-  readStateEl.textContent = "read";
+  pageInfoEl.dataset.touched = "1";
+  charCountEl.textContent = t("sp.chars", { n: page.text.length });
+  readStateEl.textContent = t("sp.read");
 }
 
 async function readActiveTab() {
   const tab = await getActiveTab();
-  if (!tab || tab.id == null) throw new Error("No active tab found.");
+  if (!tab || tab.id == null) throw new Error(t("st.noTab"));
   if (!tab.url || /^(chrome|vivaldi|edge|about|chrome-extension|vivaldi):/.test(tab.url)) {
-    throw new Error("Cannot read this page. Open a normal http(s) page.");
+    throw new Error(t("st.cannotRead"));
   }
-  pageTitleEl.textContent = (tab.title || "Reading...").slice(0, 100);
+  pageTitleEl.textContent = (tab.title || t("st.reading")).slice(0, 100);
+  pageTitleEl.dataset.touched = "1";
   let res;
   try {
     [res] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: extractPageContent });
   } catch (e) {
-    throw new Error("Scripting blocked on this page. " + (e.message || e));
+    throw new Error(t("st.scriptBlocked", { msg: (e.message || e) }));
   }
   const data = res && res.result;
-  if (!data || !data.text || data.text.trim().length < 50) throw new Error("No readable text found on this page.");
+  if (!data || !data.text || data.text.trim().length < 50) throw new Error(t("st.noText"));
   lastPage = data;
   paintPage(data);
   return data;
@@ -270,12 +307,12 @@ async function streamChat(baseUrl, apiKey, model, messages, signal) {
   if (!resp.ok) {
     let detail = "";
     try { detail = JSON.stringify(await resp.json()).slice(0, 300); } catch (e) { /* ignore */ }
-    if (resp.status === 401) throw new Error("Invalid API key (401). Check Settings.");
-    if (resp.status === 402 && isOpenRouter) throw new Error("No free-model quota left (402). Retry later or pin another :free model.");
-    if (resp.status === 402) throw new Error("Payment required (402). " + detail);
-    if (resp.status === 429) throw new Error("Rate limited (429). Wait and retry.");
-    if (resp.status === 404) throw new Error("Endpoint not found (404). Check base URL and model name. " + detail);
-    throw new Error("Provider error " + resp.status + " (" + shortHost(baseUrl) + "). " + detail);
+    if (resp.status === 401) throw new Error(t("st.invalidKey"));
+    if (resp.status === 402 && isOpenRouter) throw new Error(t("st.noQuota"));
+    if (resp.status === 402) throw new Error(t("st.payment", { detail }));
+    if (resp.status === 429) throw new Error(t("st.rateLimited"));
+    if (resp.status === 404) throw new Error(t("st.notFound", { detail }));
+    throw new Error(t("st.providerError", { status: resp.status, host: shortHost(baseUrl), detail }));
   }
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
@@ -289,10 +326,10 @@ async function streamChat(baseUrl, apiKey, model, messages, signal) {
     if (idx === -1) continue;
     const processable = buf.slice(0, idx);
     buf = buf.slice(idx + 2);
-    for (const t of parseSSE(processable)) { full += t; showRaw(full); }
+    for (const tok of parseSSE(processable)) { full += tok; showRaw(full); }
   }
-  if (buf.trim()) for (const t of parseSSE(buf)) { full += t; showRaw(full); }
-  if (!full) throw new Error("Empty response from model.");
+  if (buf.trim()) for (const tok of parseSSE(buf)) { full += tok; showRaw(full); }
+  if (!full) throw new Error(t("st.emptyResp"));
   return full;
 }
 
@@ -306,14 +343,14 @@ async function saveHistory(entry) {
 function paintHistory(history) {
   historyCountEl.textContent = String(history.length);
   if (!history.length) {
-    historyListEl.innerHTML = '<p class="placeholder">No summaries yet.</p>';
+    historyListEl.innerHTML = '<p class="placeholder">' + escapeHtml(t("sp.noHistory")) + "</p>";
     return;
   }
   historyListEl.innerHTML = "";
   history.forEach((h, i) => {
     const div = document.createElement("div");
     div.className = "history-item";
-    div.title = "Click to restore";
+    div.title = t("sp.clickRestore");
     const title = document.createElement("div");
     title.className = "h-title";
     title.textContent = (h.mode || "?") + ": " + (h.title || h.url || "page");
@@ -324,7 +361,7 @@ function paintHistory(history) {
     div.addEventListener("click", () => {
       markActiveMode(h.mode || "summary");
       showRaw(h.text);
-      setStatus("Restored from history.");
+      setStatus(t("st.restored"));
     });
     historyListEl.append(div);
     void i;
@@ -336,19 +373,19 @@ async function run(mode) {
   aborter = new AbortController();
   markActiveMode(mode);
   setBusy(true);
-  setStatus("Reading active tab...", true);
+  setStatus(t("st.reading"), true);
   showRaw("");
   usageEl.textContent = "";
   try {
     const { apiKey, model, baseUrl, needsKey, language } = await getConfig();
-    if (needsKey) { await refreshConfigUI(); throw new Error("Set your API key in Settings first."); }
+    if (needsKey) { await refreshConfigUI(); throw new Error(t("st.needKey")); }
     const page = await readActiveTab();
-    setStatus("Streaming from " + model + "...", true);
+    setStatus(t("st.streamingFrom", { model }), true);
     const full = await streamChat(baseUrl, apiKey, model, buildMessages(mode, page, language), aborter.signal);
-    setStatus("Done. " + page.text.length + " chars read.");
+    setStatus(t("st.doneChars", { n: page.text.length }));
     await saveHistory({ ts: Date.now(), mode, title: page.title, url: page.url, model, language, text: full });
   } catch (e) {
-    setStatus(e.name === "AbortError" ? "Stopped." : "Error: " + (e.message || e));
+    setStatus(e.name === "AbortError" ? t("st.stopped") : t("st.error", { msg: (e.message || e) }));
   } finally {
     aborter = null;
     setBusy(false);
@@ -363,13 +400,13 @@ async function ask(question) {
   showRaw("");
   try {
     const { apiKey, model, baseUrl, needsKey, language } = await getConfig();
-    if (needsKey) throw new Error("Set your API key in Settings first.");
+    if (needsKey) throw new Error(t("st.needKey"));
     const page = lastPage || await readActiveTab();
-    setStatus("Asking about this page...", true);
+    setStatus(t("st.asking"), true);
     await streamChat(baseUrl, apiKey, model, buildChatMessages(question, page, language), aborter.signal);
-    setStatus("Done.");
+    setStatus(t("st.done"));
   } catch (e) {
-    setStatus(e.name === "AbortError" ? "Stopped." : "Error: " + (e.message || e));
+    setStatus(e.name === "AbortError" ? t("st.stopped") : t("st.error", { msg: (e.message || e) }));
   } finally {
     aborter = null;
     setBusy(false);
@@ -381,17 +418,17 @@ stopBtn.addEventListener("click", () => { if (aborter) aborter.abort(); });
 document.getElementById("refreshBtn").addEventListener("click", async () => {
   try {
     const page = await readActiveTab();
-    setStatus("Page re-read: " + page.text.length + " chars cached.");
+    setStatus(t("st.reread", { n: page.text.length }));
   } catch (e) {
-    setStatus("Error: " + (e.message || e));
+    setStatus(t("st.error", { msg: (e.message || e) }));
   }
 });
 document.getElementById("copyBtn").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(lastRaw);
-    setStatus(lastRaw ? "Copied to clipboard." : "Nothing to copy yet.");
+    setStatus(lastRaw ? t("st.copied") : t("st.nothingCopy"));
   } catch (e) {
-    setStatus("Copy failed: " + (e.message || e));
+    setStatus(t("st.copyFailed", { msg: (e.message || e) }));
   }
 });
 function slugify(s) {
@@ -407,7 +444,7 @@ function buildObsidianMarkdown() {
 }
 
 document.getElementById("exportBtn").addEventListener("click", () => {
-  if (!lastRaw.trim()) { setStatus("Nothing to export yet."); return; }
+  if (!lastRaw.trim()) { setStatus(t("st.nothingExport")); return; }
   const page = lastPage || {};
   const name = new Date().toISOString().slice(0, 10) + "-" + slugify(page.title) + ".md";
   const blob = new Blob([buildObsidianMarkdown()], { type: "text/markdown" });
@@ -418,11 +455,11 @@ document.getElementById("exportBtn").addEventListener("click", () => {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  setStatus("Exported " + name + " - move it into your Obsidian vault.");
+  setStatus(t("st.exported", { name }));
 });
 document.getElementById("clearBtn").addEventListener("click", () => {
   showRaw("");
-  setStatus("Cleared.");
+  setStatus(t("st.cleared"));
 });
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -431,7 +468,7 @@ chatForm.addEventListener("submit", (e) => {
 });
 autoRunEl.addEventListener("change", async () => {
   await chrome.storage.local.set({ autoRun: autoRunEl.checked });
-  setStatus(autoRunEl.checked ? "Auto-summarize on page load: on." : "Auto-summarize: off.");
+  setStatus(autoRunEl.checked ? t("st.autoOn") : t("st.autoOff"));
 });
 
 // Keyboard: Alt+1..5 modes, Esc stop, / focuses chat.
@@ -452,11 +489,13 @@ async function onTabChange(auto = false) {
   try {
     const tab = await getActiveTab();
     lastPage = null;
-    readStateEl.textContent = "not read";
+    readStateEl.textContent = t("sp.notRead");
     if (tab && tab.url && /^https?/.test(tab.url)) {
-      pageTitleEl.textContent = (tab.title || "New page").slice(0, 100);
+      pageTitleEl.textContent = (tab.title || t("sp.untitled")).slice(0, 100);
+      pageTitleEl.dataset.touched = "1";
       pageInfoEl.textContent = tab.url.slice(0, 140);
-      charCountEl.textContent = "— chars";
+      pageInfoEl.dataset.touched = "1";
+      charCountEl.textContent = "—";
       if (auto) {
         const { autoRun, needsKey } = await getConfig();
         if (autoRun && !needsKey) { reading = false; run(lastMode); return; }
@@ -478,8 +517,9 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 
 chrome.storage.onChanged.addListener(() => refreshConfigUI());
 (async function init() {
+  const { uiLanguage, history } = await getConfig();
+  applyUiLanguage(uiLanguage);
   await refreshConfigUI();
-  const { history } = await getConfig();
   paintHistory(history);
   markActiveMode("summary");
   onTabChange(false);

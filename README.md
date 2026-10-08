@@ -55,7 +55,8 @@ Output is rendered as markdown.
 - `background.js` - opens panel on action click
 - `sidepanel.*` - panel UI + read-only extractor + multi-provider streaming
 - `languages.js` - shared preferred-output-language list (incl. es-419/es-ES, pt-BR/pt-PT, zh-CN/zh-TW, Cantonese)
-- `options.*` - local-only provider/key/model/language storage (`chrome.storage.local`)
+- `i18n.js` - interface-language dictionaries (en, fr, ar, de, es-ES, es-419, pt-BR, pt-PT, zh-CN, zh-TW, Cantonese) with browser-default detection
+- `options.*` - local-only provider/key/model/output-language/interface-language storage (`chrome.storage.local`)
 
 ## Notes
 
