@@ -12,8 +12,11 @@ const PROMPTS = {
   eli5: "Explain the page below like I'm 5 years old. Simple words, short sentences, one small paragraph plus one analogy.",
   takeaways: "From the page below, output two sections: 'Takeaways:' (3-5 bullets) then 'Next steps:' (1-3 short action items, or 'None' if not applicable).",
   shards: "You are building a technical knowledge shard for Obsidian from the page below. Output clean Markdown only, no preamble. Use exactly these sections:\n\n## Overview\n2-3 sentences: what this is and when to use it.\n\n## Key concepts\nBullet list of terms in bold with one-line definitions: - **Term** - definition.\n\n## How it works\nNumbered steps or short paragraphs explaining the mechanism.\n\n## Code / commands\nFenced code blocks with language tags where applicable. Skip if none.\n\n## Gotchas\nBullets: pitfalls, edge cases, version caveats.\n\n## References\nBullets with page links or named sources mentioned. Keep answers dense and technical.",
+  post: "Turn the page below into ONE share-ready social post. Output plain text only, exactly this shape:\n\n[HOOK - one punchy line under 120 characters]\n\n[2-4 short lines with the most surprising or useful point. Line breaks between ideas. No jargon. Under 400 characters total.]\n\n[3-5 hashtags on one line]\n\n[One-line CTA: comment, share or follow]\nKeep it self-contained: no 'this article' phrasing, state the idea directly.",
+  thread: "Turn the page below into an X thread of exactly 5 posts. Output plain text only. Number them '1/5' to '5/5'. Each post MUST be under 260 characters including the number. Rules: 1/5 is a standalone hook (works without context), 2-4 deliver one idea each with zero fluff, 5/5 is the takeaway plus a CTA (follow/repost). No hashtags except one max in 5/5. No 'this article' phrasing.",
+  reel: "Turn the page below into a 30-45 second Instagram reel script (max ~110 spoken words). Output Markdown with exactly this shape:\n\n## Titles\n3 options, each under 60 characters.\n\n## Hook (0:00-0:03)\n**Say:** one spoken line under 20 words.\n**Show:** on-screen text under 8 words.\n\n## Beats\n3 beats. Each beat:\n**Say:** 1-2 spoken lines.\n**Show:** on-screen text and one B-roll/cut suggestion.\n\n## CTA (final 3s)\n**Say:** one line (follow / link in bio / comment).\n**Show:** on-screen text.\n\nRules: spoken lines use simple everyday words, readable aloud. One idea per beat. No hashtags in script; add one line of 3-5 hashtags at the very end under '## Hashtags'.",
 };
-const MODE_SHORTCUTS = { tldr: "Alt+1", summary: "Alt+2", bullets: "Alt+3", eli5: "Alt+4", takeaways: "Alt+5", shards: "Alt+6" };
+const MODE_SHORTCUTS = { tldr: "Alt+1", summary: "Alt+2", bullets: "Alt+3", eli5: "Alt+4", takeaways: "Alt+5", shards: "Alt+6", post: "Alt+7", thread: "Alt+8", reel: "Alt+9" };
 
 const statusEl = document.getElementById("status");
 const outputEl = document.getElementById("output");
@@ -399,8 +402,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && aborter) { aborter.abort(); return; }
   if (e.key === "/" && document.activeElement !== chatInput) { e.preventDefault(); chatInput.focus(); return; }
   if (!e.altKey || e.shiftKey || e.ctrlKey || e.metaKey) return;
-  const modes = ["tldr", "summary", "bullets", "eli5", "takeaways", "shards"];
-  const idx = ["1", "2", "3", "4", "5", "6"].indexOf(e.key);
+  const modes = ["tldr", "summary", "bullets", "eli5", "takeaways", "shards", "post", "thread", "reel"];
+  const idx = ["1", "2", "3", "4", "5", "6", "7", "8", "9"].indexOf(e.key);
   if (idx !== -1) { e.preventDefault(); run(modes[idx]); }
 });
 
